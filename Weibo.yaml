@@ -1,30 +1,62 @@
 name: 微博跳转
-description: 将微博网页链接重定向到你选择的客户端（Lolipop / VVebo / 原版）
+description: |
+  将微博链接跳转到所选客户端（Lolipop / VVebo / 原版微博）。
+  · 下拉选择客户端（env_schema）
+  · 内容页 302 → App URL Scheme（对齐 Telegram 跳转）
+  · 同步改写响应 Location 头 + 响应体中的 sinaweibo:// / weibo://
+  需开启 MITM 并信任证书。
 author: 雪允
 icon: https://iili.io/CQstj7p.png
+
 env_schema:
   CLIENT:
     name: 微博客户端
-    description: 选择要跳转到的微博客户端
-    default_value: 原版微博
+    description: |
+      选择要跳转到的客户端。
+      Lolipop/VVebo 需已安装；原版微博=不拦截内容页（仍会把第三方 scheme 改回官方）。
+    default_value: Lolipop
     options:
-    - 原版微博
-    - Lolipop
-    - VVebo
+      - Lolipop
+      - VVebo
+      - 原版微博
+
 dns: {}
+
 scriptings:
-- http_request:
-    name: 微博链接重定向
-    match: ^https?://((www\.)?weibo\.com|(www\.)?weibo\.cn|m\.weibo\.cn|s\.weibo\.com)/.+
-    # 本地导入时请改为你自己托管的 WbRedirect.js 地址，或使用下方 inline 方式
-    script_url: https://raw.githubusercontent.com/yuju520/module/refs/heads/main/WbRedirect.js
-    timeout: 10
+  - http_request:
+      name: 微博链接重定向
+      match: ^https?://([^/]*\.)?(weibo\.(com|cn)|sina\.(com\.cn|cn)|t\.cn|wb\.cn)(/|\?|$)
+      # 上传 GitHub 后改成你的 raw 地址，例如：
+      # script_url: https://raw.githubusercontent.com/<user>/<repo>/main/WbRedirect.js
+      script_url: https://raw.githubusercontent.com/yuju520/module/refs/heads/main/WbRedirect.js
+      body_required: false
+      timeout: 10
+      max_size: 1048576
+      env:
+        CLIENT: Lolipop
+
+  - http_response:
+      name: 微博 Scheme 响应改写
+      match: ^https?://([^/]*\.)?(weibo\.(com|cn)|sina\.(com\.cn|cn)|t\.cn|wb\.cn)(/|\?|$)
+      script_url: https://raw.githubusercontent.com/yuju520/module/refs/heads/main/WbRedirect.js
+      body_required: true
+      timeout: 15
+      max_size: 2097152
+      env:
+        CLIENT: Lolipop
+
 mitm:
   hostnames:
-  - weibo.com
-  - www.weibo.com
-  - weibo.cn
-  - www.weibo.cn
-  - m.weibo.cn
-  - s.weibo.com
-  - c.weibo.cn
+    - weibo.com
+    - "*.weibo.com"
+    - weibo.cn
+    - "*.weibo.cn"
+    - sina.com.cn
+    - "*.sina.com.cn"
+    - sina.cn
+    - "*.sina.cn"
+    - t.cn
+    - wb.cn
+    - "*.wb.cn"
+    - weibo.com.cn
+    - "*.weibo.com.cn"
