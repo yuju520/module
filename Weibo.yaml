@@ -1,0 +1,59 @@
+name: 微博跳转
+description: 将微博链接重定向到你选择的客户端（Lolipop / VVebo / 原版微博）
+author: 雪允
+icon: https://iili.io/CQstj7p.png
+
+env_schema:
+  CLIENT:
+    name: 微博客户端
+    description: |
+      选择要跳转到的微博客户端。
+      · Lolipop / VVebo：内容页 302 到对应 scheme，并改写响应里的 sinaweibo://
+      · 原版微博：不拦截内容页（与 Telegram 选官方一致）
+    default_value: Lolipop
+    options:
+      - Lolipop
+      - VVebo
+      - 原版微博
+
+dns: {}
+
+scriptings:
+  # 通道 1：内容页 / openapp 在请求阶段 302 → App scheme（对齐 TgRedirect）
+  - http_request:
+      name: 微博链接重定向
+      match: ^https?://([^/]*\.)?(weibo\.(com|cn)|sina\.(com\.cn|cn)|t\.cn|wb\.cn)(/|\?|$)
+      # 上传 GitHub 后改成你的 raw 地址
+      script_url: https://raw.githubusercontent.com/yuju520/module/refs/heads/main/WbRedirect.js
+      body_required: false
+      timeout: 10
+      max_size: 1048576
+      env:
+        CLIENT: Lolipop
+
+  # 通道 2：H5/JSON 响应里的 sinaweibo://、Location 头（HAR 证实微信 H5 会下发）
+  - http_response:
+      name: 微博 Scheme 响应改写
+      match: ^https?://([^/]*\.)?(weibo\.(com|cn)|sina\.(com\.cn|cn)|t\.cn|wb\.cn)(/|\?|$)
+      script_url: https://raw.githubusercontent.com/yuju520/module/refs/heads/main/WbRedirect.js
+      body_required: true
+      timeout: 15
+      max_size: 2097152
+      env:
+        CLIENT: Lolipop
+
+mitm:
+  hostnames:
+    - weibo.com
+    - "*.weibo.com"
+    - weibo.cn
+    - "*.weibo.cn"
+    - sina.com.cn
+    - "*.sina.com.cn"
+    - sina.cn
+    - "*.sina.cn"
+    - t.cn
+    - wb.cn
+    - "*.wb.cn"
+    - weibo.com.cn
+    - "*.weibo.com.cn"
